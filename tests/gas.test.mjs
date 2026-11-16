@@ -19,12 +19,21 @@ function fakeSheet(name, values) {
     values: values.map((r) => r.slice()),
     getDataRange: () => ({ getValues: () => sheet.values.map((r) => r.slice()) }),
     getLastColumn: () => (sheet.values[0] || []).length,
-    getRange: (row, col, numRows, numCols) => ({
+    // セルごとの表示形式を「行,列」をキーにして覚えておく
+    formats: {},
+    getRange: (row, col, numRows = 1, numCols = 1) => ({
+      setNumberFormat: (f) => {
+        for (let r = row; r < row + numRows; r++) {
+          for (let c = col; c < col + numCols; c++) sheet.formats[r + ',' + c] = f;
+        }
+      },
       getValues: () => sheet.values.slice(row - 1, row - 1 + numRows).map((r) => r.slice(col - 1, col - 1 + numCols)),
       setValues: (v) => { v.forEach((r, i) => { sheet.values[row - 1 + i] = r.slice(); }); },
       getSheet: () => sheet,
     }),
-    clearContents: () => { sheet.values = []; },
+    // clear() は値と書式の両方を消す。clearContents() はわざと用意せず、呼ばれたらテストが失敗するようにしている
+    formatsCleared: false,
+    clear: () => { sheet.values = []; sheet.formats = {}; sheet.formatsCleared = true; },
   };
   return sheet;
 }
@@ -107,6 +116,13 @@ test('フォーム送信時：集計シートを作り、通知メールを1通�
   assert.deepEqual(summary[0], ['品目', '件数', '数量の合計']);
   assert.deepEqual(summary[1], ['ボールペン', 1, 10]);
   assert.deepEqual(summary[3], ['合計', 2, 12]);
+  // 前回の日付の書式が数字に残らないよう、書式ごと消していること
+  const s = g.sheets['集計'];
+  assert.equal(s.formatsCleared, true);
+  // 件数・数量のセルは数値の書式、最終更新の日時は文字列の書式になっていること
+  assert.equal(s.formats['4,2'], '0'); // 合計の件数
+  assert.equal(s.formats['5,2'], '0'); // 数量が読めなかった件数
+  assert.equal(s.formats[summary.length + ',2'], '@'); // 最終更新
   assert.equal(g.sent.length, 1);
   assert.equal(g.sent[0].to, 'demo@example.com');
   assert.match(g.sent[0].subject, /コピー用紙 ×2/);

@@ -52,8 +52,15 @@ function updateSummary_(responseSheet) {
   const updatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
   const table = buildSummaryTable(result, updatedAt);
 
-  summary.clearContents();
-  summary.getRange(1, 1, table.length, table[0].length).setValues(table);
+  // 「最終更新」の日時をそのまま書くと、スプレッドシートが日付に変換してセルに日付の書式を付ける。
+  // 品目が増えて行の位置がずれると、その書式が残ったセルの件数が「1900-01-02」のような日付で
+  // 表示されてしまう（2026-11-16 に実機で確認。clear() だけでは直らなかった）。
+  // そのため毎回、数字のセルは数値の書式、日時のセルは文字列の書式をはっきり指定してから書く。
+  summary.clear();
+  const range = summary.getRange(1, 1, table.length, table[0].length);
+  range.setNumberFormat('0');
+  summary.getRange(table.length, 2).setNumberFormat('@');
+  range.setValues(table);
   return result;
 }
 
