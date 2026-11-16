@@ -1,0 +1,10 @@
+# clasp（GAS をローカルから操作するツール）を使う場合の、スクリプトIDや認証情報
+.clasp.json
+.clasprc.json
+
+# 秘密情報
+.env
+.env.*
+!.env.example
+
+node_modules/
